@@ -28,7 +28,7 @@ class Vec3:
     def __sub__(self, v):
         e0, e1, e2 = self.e
         f0, f1, f2 = v
-        return Vec3(e0 - f0, e1 - f1, e2 + f2)
+        return Vec3(e0 - f0, e1 - f1, e2 - f2)
 
     def __mul__(self, t):
         e0, e1, e2 = self.e
@@ -102,15 +102,11 @@ class Ray():
         b = 2.0 * oc.dot(self.direction)
         c = oc.dot(oc) - (radius ** 2)
         discriminant = (b*b) - (4*a*c)
-        return discriminant > 0
-    # bool hit_sphere(const point3& center, double radius, const ray& r) {
-    #     vec3 oc = r.origin() - center;
-    #     auto a = dot(r.direction(), r.direction());
-    #     auto b = 2.0 * dot(oc, r.direction());
-    #     auto c = dot(oc, oc) - radius*radius;
-    #     auto discriminant = b*b - 4*a*c;
-    #     return (discriminant > 0);
-    # }
+
+        if discriminant < 0:
+            return -1.0
+        
+        return ((-b) - math.sqrt(discriminant)) / (2.0 * a)
 
     def at(self, t):
         return self.origin + (t * self.direction)

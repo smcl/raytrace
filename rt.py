@@ -96,17 +96,92 @@ class Ray():
         self.origin = origin
         self.direction = direction
 
-    def hit_sphere(self, center, radius):
-        oc = self.origin - center
-        a = self.direction.dot(self.direction)
-        b = 2.0 * oc.dot(self.direction)
-        c = oc.dot(oc) - (radius ** 2)
-        discriminant = (b*b) - (4*a*c)
-
-        if discriminant < 0:
-            return -1.0
-        
-        return ((-b) - math.sqrt(discriminant)) / (2.0 * a)
-
     def at(self, t):
         return self.origin + (t * self.direction)
+
+class HitRecord:
+    def __init__(self, point=None, normal=None, t=None, front_face=None):
+        self.point = point
+        self.normal = normal
+        self.t = t
+        self.front_face = front_face
+
+    def update(self, new_rec):
+        self.point = new_rec.point
+        self.normal = new_rec.normal
+        self.t = new_rec.t
+        self.front_face = new_rec.front_face
+        
+    def set_face_normal(self, r, outward_normal):
+        self.front_face = r.direction.dot(outward_normal) < 0
+        self.normal = outward_normal if self.front_face  else -outward_normal
+
+class Sphere:
+    def __init__(self, center, radius):
+        self.center = center
+        self.radius = radius
+
+    def hit(self, r, t_min, t_max, rec):
+        oc = r.origin - self.center
+        a = r.direction.length_squared()
+        half_b = oc.dot(r.direction)        
+        c = oc.length_squared() - (self.radius ** 2)
+        
+        discriminant = (half_b * half_b) - (a * c)
+        if discriminant < 0:
+            return False
+        sqrtd = math.sqrt(discriminant)
+
+        root = (-half_b - sqrtd) / a
+        if (root < t_min or t_max < root):
+            root = (-half_b + sqrtd) / a
+            if (root < t_min or t_max < root):
+                return False
+        
+        rec.t = root
+        rec.point = r.at(rec.t)
+        outward_normal = (rec.point - self.center).div(self.radius)
+        rec.set_face_normal(r, outward_normal)
+
+        return True
+
+class HittableList:
+        def __init__(self, objects=None):
+            if objects and len(objects) > 0:
+                self.objects = [o for o in objects]
+            else:
+                self.objects = []
+
+        def add(self, obj):
+            self.objects.append(obj)
+
+        def clear(self):
+            self.objects.clear()
+
+        def hit(self, r, t_min, t_max, rec):
+            hit_something = False
+            closest_obj_t = t_max
+
+            for obj in self.objects:
+                temp_rec = HitRecord()
+                if obj.hit(r, t_min, closest_obj_t, temp_rec):
+                    hit_something = True
+                    closest_obj_t = temp_rec.t
+                    rec.update(temp_rec)
+
+            return hit_something
+
+class Camera:
+    def __init__(self):
+        aspect_ratio = 16.0 / 9.0
+        viewport_height = 2.0
+        viewport_width = aspect_ratio * viewport_height
+        focal_length = 1.0
+
+        self.origin = Point3(0.0, 0.0, 0.0)
+        self.horizontal = Vec3(viewport_width, 0,               0)
+        self.vertical   = Vec3(0,              viewport_height, 0)
+        self.lower_left_corner = self.origin - self.horizontal.div(2) - self.vertical.div(2) - Vec3(0, 0, focal_length)
+
+    def get_ray(self, u, v):
+        return Ray(self.origin, self.lower_left_corner + (u * self.horizontal) + (v * self.vertical) - self.origin)

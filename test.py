@@ -1,12 +1,16 @@
-from rt import Vec3, Color, Point3, Ray
+from rt import Vec3, Color, Point3, Ray, HitRecord, Sphere, HittableList, Camera
+from rtutil import write_color, random_double, random_vec3, random_vec3_in_unit_sphere
 import sys
+import math
 
-def ray_color(r):
-    t = r.hit_sphere(Point3(0.0, 0.0, -1.0), 0.5)
+def ray_color(r, world, depth):
+    if depth <= 0:
+        return Color(0, 0, 0)
 
-    if (t > 0.0):
-        n = (r.at(t) - Vec3(0, 0, -1.0)).unit_vector()
-        return 0.5 * Color(n.x() + 1.0, n.y() + 1.0, n.z() + 1.0)
+    rec = HitRecord()
+    if world.hit(r, 0, math.inf, rec):
+        target = rec.point + rec.normal + random_vec3_in_unit_sphere()
+        return 0.5 * ray_color(Ray(rec.point, target - rec.point), world, depth -1)
 
     unit_direction = r.direction.unit_vector()
     t = 0.5 * (unit_direction.y() + 1.0)
@@ -16,18 +20,19 @@ def ray_color(r):
 aspect_ratio = 16.0 / 9.0
 image_width = 400
 image_height = image_width / aspect_ratio
+samples_per_pixel = 100
+max_depth = 50
 
 # Camera
-viewport_height = 2.0
-viewport_width = aspect_ratio * viewport_height
-focal_length = 1.0
-origin = Point3(0.0, 0.0, 0.0)
-horizontal = Vec3(viewport_width, 0,               0)
-vertical   = Vec3(0,              viewport_height, 0)
-lower_left_corner = origin - horizontal.div(2) - vertical.div(2) - Vec3(0, 0, focal_length)
+camera = Camera()
 
-print(origin, file=sys.stderr)
-print(lower_left_corner, file=sys.stderr)
+# World
+world = HittableList()
+world.add(Sphere(Point3(0, 0, -1), 0.5))
+world.add(Sphere(Point3(0, -100.5, -1), 100))
+
+# print(origin, file=sys.stderr)
+# print(lower_left_corner, file=sys.stderr)
 
 print("P3")
 print(int(image_width), int(image_height))
@@ -35,8 +40,10 @@ print(255)
 
 for y in range(int(image_height), 0, -1):
     for x in range(int(image_width)):
-        u = x / (image_width - 1)
-        v = y / (image_height - 1)
-        r = Ray(origin, lower_left_corner + (u*horizontal) + (v*vertical) - origin)
-        c = ray_color(r)
-        c.write()
+        pixel_color = Color()
+        for _ in range(samples_per_pixel):
+            u = (random_double() + x) / (image_width - 1)
+            v = (random_double() + y) / (image_height - 1)
+            r = camera.get_ray(u, v)
+            pixel_color += ray_color(r, world, max_depth)
+        write_color(pixel_color, samples_per_pixel)

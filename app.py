@@ -1,5 +1,11 @@
-from rt import Vec3
+from multiprocessing import Pool
+
+def f(x):
+    return [x, x*x]
 
 
-v = Vec3(1, 2, 3)
-w = Vec3(4, 5, 6)
+if __name__ == '__main__':
+    print("gorp")
+    nums = [ n for n in range(100)]
+    with Pool(5) as p:
+        print(p.map(f, nums))

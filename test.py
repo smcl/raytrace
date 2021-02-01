@@ -1,5 +1,5 @@
 from rt import Vec3, Color, Point3, Ray, HitRecord, Sphere, HittableList, Camera
-from rtutil import write_color, random_double, random_vec3, random_vec3_in_unit_sphere
+from rtutil import compute_color, random_double, random_vec3, random_vec3_in_unit_sphere
 import sys
 import math
 
@@ -46,4 +46,5 @@ for y in range(int(image_height), 0, -1):
             v = (random_double() + y) / (image_height - 1)
             r = camera.get_ray(u, v)
             pixel_color += ray_color(r, world, max_depth)
-        write_color(pixel_color, samples_per_pixel)
+        c = compute_color(pixel_color, samples_per_pixel)
+        print(c)
